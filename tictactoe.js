@@ -43,32 +43,51 @@ const controller = (()=>{
     let players = [];
     let currentPlayer;
     let gameStatus;
+    let selectedMark = '';
+
+    const markX = document.querySelector("#X");
+    const markO = document.querySelector("#O");
+
+    markX.addEventListener('click', ()=>{
+      selectedMark = 'X';
+      return selectedMark
+    });
+    markO.addEventListener('click', ()=>{
+      selectedMark = 'O';
+      return selectedMark
+    });
+
+
 
   const start = ()=>{
-    const player1Name = document.querySelector("#Player1").value;
-    const computersName = 'computer'
-    players = [Player(player1Name, "X"),
-              computer(computersName, "O")
-              ];
-    gameStatus = 'ongoing';
-    currentPlayer = 0;
-    Gameboard.displayArray();
-    document.getElementById('status').textContent = `player ${players[currentPlayer].name} turn`;
+    const playerName = document.querySelector("#Player1").value;
 
-    if(players[currentPlayer]=== computer){
-      setTimeout(()=>{
+    const computersName = 'SAM-AI';
+      players = [Player(playerName, selectedMark),
+        computer(computersName, selectedMark==="X"? "O":"X")
+        ];
+      gameStatus = 'ongoing';
+      currentPlayer = 0;
+      Gameboard.displayArray();
+      document.getElementById('status').textContent = `player ${players[currentPlayer].name} turn`;
+
+     if(players[currentPlayer]=== computer){
+        setTimeout(()=>{
         computersMove();
-      }, 500)
-    }
-
-    
+       }, 500)
+     }
+  };
    
-  }
+  
 
 
   const makeMove = (event)=>{
     let squareIndex = parseInt(event.target.id.split('-')[1]);
     if(Gameboard.Getgameboard()[squareIndex] === '' && gameStatus == 'ongoing'){
+      const currentPlayerMark = players[currentPlayer].mark;
+      
+      const currentSquare = document.getElementById(`square-${squareIndex}`);
+      currentSquare.classList.add(currentPlayerMark === "X" ? "red" : "yellow");
           Gameboard.updateboard(squareIndex, players[currentPlayer].mark);
           if(checkWin()){
             gameStatus = 'win';
@@ -142,45 +161,100 @@ const controller = (()=>{
     }
     Gameboard.displayArray();
     document.querySelector("#Player1").value = '';
-    document.querySelector("#Player2").value = '';
      gameStatus = 'ongoing';
     currentPlayer = 0;
+    
    document.getElementById('status').textContent= `${players[currentPlayer].name}'s turn`;
+   
   };
 
   const computersMove = ()=>{
-      const availableSquares = Gameboard.Getgameboard().reduce((acc, val, index) => {
-        if (val === "") acc.push(index);
-        return acc;
-      }, []);
-      const randomIndex = Math.floor(Math.random() * availableSquares.length);
-      const randomSquare = availableSquares[randomIndex];
-      Gameboard.updateboard(randomSquare, players[currentPlayer].mark);
+      const bestMove = minimax(players[1].mark, 0).index;
+      Gameboard.updateboard(bestMove, players[1].mark);
+      
     
       if (checkWin()) {
         gameStatus = 'win';
-        document.getElementById('status').textContent = `Player ${players[currentPlayer].name} wins`;
+        document.getElementById('status').textContent = ` ${players[currentPlayer].name} wins`;
       } else if (checkDraw()) {
         gameStatus = 'draw';
         document.getElementById('status').textContent = 'The game is a draw';
       } else {
-        // Switch to the other player's turn
         currentPlayer = (currentPlayer === 0) ? 1 : 0;
-        document.getElementById('status').textContent = `Player ${players[currentPlayer].name}'s turn`;
+        document.getElementById('status').textContent = ` ${players[currentPlayer].name}'s turn`;
     
-        // If it's the computer's turn, make the next move after a short delay
+      
         if (players[currentPlayer] === computer) {
           setTimeout(() => {
             computersMove();
-          }, 500); // Add a delay to see the computer's move
+          }, 500); 
         }
       }
     
     
   };
 
+  const minimax = (currentMark, depth) => {
+    const availableSquares = Gameboard.Getgameboard().reduce((acc, val, index) => {
+      if (val === "") acc.push(index);
+      return acc;
+    }, []);
+  
+    if (checkWin() && currentMark === players[1].mark) {
+      return { score: 10 - depth };
+    } else if (checkWin() && currentMark === players[0].mark) {
+      return { score: depth - 10 };
+    } else if (checkDraw()) {
+      return { score: 0 };
+    }
+  
+    const moves = [];
+  
+    for (const index of availableSquares) {
+      const move = {};
+      move.index = index;
+      Gameboard.updateboard(index, currentMark);
+  
+      if (currentMark === players[1].mark) {
+        const result = minimax(players[0].mark, depth + 1);
+        move.score = result.score;
+      } else {
+        const result = minimax(players[1].mark, depth + 1);
+        move.score = result.score;
+      }
+  
+      Gameboard.updateboard(index, ""); // Undo the move
+      moves.push(move);
+    }
+  
+    let bestMove;
+    if (currentMark === players[1].mark) {
+      let bestScore = -Infinity;
+      for (const move of moves) {
+        if (move.score > bestScore) {
+          bestScore = move.score;
+          bestMove = move;
+        }
+      }
+    } else {
+      let bestScore = Infinity;
+      for (const move of moves) {
+        if (move.score < bestScore) {
+          bestScore = move.score;
+          bestMove = move;
+        }
+      }
+    }
+  
+    return bestMove;
+  };
+  
+  
 
-   return {start, makeMove, restart}
+  
+
+
+   return {start, makeMove, restart,}
 })();
 
 
@@ -195,4 +269,6 @@ startButton.addEventListener("click", ()=> {
 
   controller.start()
 
-})
+});
+
+
